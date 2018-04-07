@@ -9,9 +9,29 @@ if($opt_i && $opt_l){
 	open FILE, "$opt_i" || die "Can not open the file:$!";
 	my @array= <FILE>;
 	close FILE;
+	my @InsertSize = split(/\n/,$array[3]);
+	my $insert_length = @InsertSize;
+	my $insert = 0;
+	my $count  = 0;
+	
+	for(my $i=2;$i < $insert_length;$i++){
+		chomp($InsertSize[$i]);
+		my @line = split(/\t/,$InsertSize[$i]);
+		if($count < $line[1]){
+			$count  = $line[1];
+			$insert = $line[0];
+		}else{
+			next;
+		}
+	}
+	$/="\n";
+	
+	$insert = $insert- 2*$opt_l;
+	print $insert;
 	
 }else{
   &usage;
+	exit;
 }
 sub usage{
   die(
