@@ -1,4 +1,17 @@
 #!/bin/bash
+
+function usage(){
+  echo "bash $0 [ -p path/to/RNA-seq/data ] [ -t tissue name ] [ -r Repetitions ] [ -l reads length ] [ -g gtf file ] [ -s data size ] [ -f genome reference ]"
+  echo -e "\t\t -p path/to/RNS-seq/data. please provide the absoluted path to directory storing your RNA-seq data"
+	echo -e "\t\t -t tissue name. please provide your sample name. If you have two or more samples, please separate them with commas"
+	echo -e "\t\t -r repetitions. please set your repetitions. It is set to be 3 by default"
+	echo -e "\t\t -l reads length. please provide the reads length. This value can be obtained from FastQC output"
+	echo -e "\t\t -g gene annotation file(gtf). Store this file in the upper directory of your RNA-seq data"
+	echo -e "\t\t -f genome reference. please provide the reference genome. Before it is used, check if it was indexed by Bowtie2-build"
+	echo -e "\t\t -s data size. It has only two value, "l" or "s". "l" means large file while "s" means small file size. If it was not set properly, an error will occur and the pipeline will exit"
+	exit
+}
+
 declare -i repeat=3
 declare -i length=150
 path="/media/disk1"
@@ -29,11 +42,15 @@ do
       size=${OPTARG}
       ;;      
     ?)
-      echo "UNKNOWN argument"
-      exit 1
+      usage
       ;;
   esac
 done
+
+if [ "$size" != "l" ] && [ "$size" != "s" ]
+then
+	usage
+fi
 
 cd ${path}
 tissue=`echo ${tissue} |sed 's/,/ /g'`
@@ -64,18 +81,22 @@ do
 done
 
 cuffmerge -g ${gtf_ref} -s ${ref_genome}.fa -p 8 assemblies.txt
-cuffdiff -o diff_out -b ${ref_genome}.fa -p 8 -L $(echo ${tissue}|sed 's/ /,/g') -u merged_asm/merged.gtf ${i}_${j}_thout/accepted_hits.bam,${i}_${j}_thout/accepted_hits.bam,${i}_${j}_thout/accepted_hits.bam ${i}_${j}_thout/accepted_hits.bam,${i}_${j}_thout/accepted_hits.bam,${i}_${j}_thout/accepted_hits.bam
-Rscript cummeRbund.R diff_out
 
-function usage(){
-  echo "bash $0 [ -p path/to/RNA-seq/data ] [ -t tissue name ] [ -r Repetitions ] [ -l reads length ] [ -g gtf file ] [ -s data size ] [ -f genome reference ]"
-  echo -e "\t\t -p path/to/RNS-seq/data. please provide the absoluted path to directory storing your RNA-seq data"
-	echo -e "\t\t -t tissue name. please provide your sample name. If you have two or more samples, please separate them with commas"
-	echo -e "\t\t -r repetitions. please set your repetitions. It is set to be 3 by default"
-	echo -e "\t\t -l reads length. please provide the reads length. This value can be obtained from FastQC output"
-	echo -e "\t\t -g gene annotation file(gtf). Store this file in the upper directory of your RNA-seq data"
-	echo -e "\t\t -f genome reference. please provide the reference genome. Before it is used, check if it was indexed by Bowtie2-build"
-	echo -e "\t\t -s data size. It has only two value, "l" or "s". "l" means large file while "s" means small file size. If it was not set properly, an error will occur and the pipeline will exit"
-	exit
-}
-}
+declare -a bam_out
+for i in ${tissue}
+do
+	unset bam
+	for j in $(seq $repeat)
+	do
+		if [ "$bam" = "" ]
+		then
+			bam="${i}_${j}/accepted_hits.bam"
+		else
+			bam="${bam},${i}_${j}/accepted_hits.bam"
+		fi
+	done
+	bam_out=(${bam_out[*]} ${bam})
+done
+			
+cuffdiff -o diff_out -b ${ref_genome}.fa -p 8 -L $(echo ${tissue}|sed 's/ /,/g') -u merged_asm/merged.gtf ${bam_out[*]}
+Rscript cummeRbund.R diff_out
