@@ -68,8 +68,8 @@ do
       jave -jar /your/path/to/picard.jar CollectInsertSizeMetrics I=./${i}_${j}/accepted_hits.bam O=${i}_${j}_insertsizeMetrics.txt H=${i}_${j}_insertSize_Histogram.pdf
     else
       usage
-      exit
     fi
+    
     Insertsize=$(perl insertSize.pl -i ${i}_${j}_insertsizeMetrics.txt -l ${length})
     rm -rf ${i}_${j}
     cd ${path}
